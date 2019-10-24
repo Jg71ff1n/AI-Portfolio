@@ -1,3 +1,31 @@
 <aiml version="1.0.1" encoding="UTF-8">
 
+<category> <pattern> HELLO </pattern>
+  <template>Hello! How are you?</template> </category>
+
+<category> <pattern> HELLO * </pattern>
+  <template><srai>HELLO</srai></template> </category>
+
+<category> <pattern> HI </pattern>
+  <template><srai>HELLO</srai></template> </category>
+
+<category> <pattern> HI * </pattern>
+  <template><srai>HELLO</srai></template> </category>
+
+<category> <pattern> HOW ARE YOU </pattern>
+  <template>I'm functioning within normal parameters, thanks for asking.</template></category>
+
+<category><pattern> I AM FINE </pattern>
+  <template>That's good to know. What would you know about board games?</template></category>
+
+<category><pattern> BYE </pattern>
+  <template>^e$Goodbye</template></category>
+
+  <category><pattern> WHAT IS * </pattern>
+  <template>^sn$<star index="1"/></template></category>
+
+  <!-- Default reaction -->
+<category><pattern> * </pattern>
+  <template>^X$<star index="1+"/></template></category>
+
 </aiml>

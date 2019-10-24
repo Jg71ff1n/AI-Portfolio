@@ -112,6 +112,13 @@ class DatabaseHelper():
             return result.iloc[:, :-1]  # Do not return 'details.searchname'
         else:
             return None
+    
+    @staticmethod
+    def pretty_print_dataframe(df: pd.DataFrame, details = False, columns='') -> str:
+        if details == True:
+            for entry in df:
+                print(entry)
+        else:
 
 
 class ResponseAgent(Enum):
@@ -135,7 +142,7 @@ agent.bootstrap(learnFiles='boardgames.xml')  # Add link to AIML file
 # CLI chatbot
 while True:
     try:
-        question = input("->")
+        question = input("-> ")
     except(KeyboardInterrupt, EOFError) as e:
         print("Goodbye")
         break
@@ -156,14 +163,16 @@ while True:
 
     if response[0] == '^':  # ^CommandSubcommand$Param
         params = response.split('$')
-        command_block = params[0]
-        command = command_block[0]
-        if command == 'e':  # End chat
+        command_block = params[0] # ^CommandSubcommand
+        command = command_block[1:] # CommandSubcommand
+        print(command)
+        if command[0] == 'e':  # End chat
+            print(params[1])
             break
-        if command == 's':  # Search DB
-            sub_command = command_block[2]
+        if command[0] == 's':  # Search DB
+            sub_command = command[1]
             if sub_command == 'n':
-                db.search_by_name(params[1])
+                print(db.search_by_name(params[1])) # Print Details
             elif sub_command == 'p':
                 db.search_by_minplayers(params[1])
             elif sub_command == 'y':
@@ -182,5 +191,8 @@ while True:
                 pass
             else:
                 print('Sorry, something went wrong.')
+        elif command[0] == 'X':
+            # run similarity cosine across database
+            from sklearn.
     else:
         print(response)
