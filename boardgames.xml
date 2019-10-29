@@ -43,7 +43,11 @@
 <category><pattern> WHAT GAME HAS A SCORE MORE THAN * </pattern>
   <template>^ss$<star index="1"/></template></category>
 
-  <!-- Default reaction -->
+<!-- Search via similarity of the description  -->
+<category><pattern> I WANT A GAME ABOUT * </pattern>
+  <template>^X$<star index="1"/></template></category>
+
+<!-- Default reaction -->
 <category><pattern> * </pattern>
   <template>^X$<star index="1+"/></template></category>
 

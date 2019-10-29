@@ -4,7 +4,7 @@ import sqlite3
 import pandas as pd
 from enum import Enum
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics.pairwise import linear_kernel
 
 
 class DatabaseHelper():
@@ -31,10 +31,10 @@ class DatabaseHelper():
         # Lowercase names for ease of searching
         cleaned_data['details.searchname'] = cleaned_data['details.name'].str.lower()
 
-        # Create a column of TF-IDF Scores on details.description
-        cleaned_data['tf-idf'] = cleaned_data['details.description'].apply(
-            lambda y: TfidfVectorizer(y))
-        print(cleaned_data.head())
+        # Create a column of TF-IDF vectors on details.description
+        description_column = cleaned_data['details.description'].tolist()
+        print(description_column[:2])
+        self.tfidfs = TfidfVectorizer().fit_transform(description_column)
         return cleaned_data
 
     def search_by_name(self, name: str) -> pd.DataFrame:
@@ -120,49 +120,50 @@ class DatabaseHelper():
         else:
             return None
 
-    def search_by_similarity(self, score: float) -> pd.DataFrame:
-        raise NotImplementedError()
-        # search = self.proccessed_df.apply(lambda x: cosine_similarity(x['tf-idf'], score)
-        
+    def search_by_similarity(self, score: list) -> pd.DataFrame:
+        cosine_similarities = linear_kernel(score, self.tfidfs).flatten()
+        similar_indexes = cosine_similarities.argsort()[:5:-1]
+        similar_entries = self.proccessed_df.iloc(similar_indexes)
+        return similar_entries
 
     @staticmethod
     def pretty_print_dataframe(dataframe: pd.DataFrame, columns=['details.name', 'details.description', 'attributes.boardgamecategory', 'stats.bayesaverage']):
-        data_to_print: pd.DataFrame=dataframe[columns]
+        data_to_print: pd.DataFrame = dataframe[columns]
         for index, entry in data_to_print.iterrows():
             print(entry)
 
 
 class ResponseAgent(Enum):
-    AIML='aiml'
-    IMAGE='image'
-    TOY='toy'
-    STS='sts'
-    RL='rl'
+    AIML = 'aiml'
+    IMAGE = 'image'
+    TOY = 'toy'
+    STS = 'sts'
+    RL = 'rl'
 
 
 # Import database
-conn=sqlite3.connect('board-games-dataset/database.sqlite')
+conn = sqlite3.connect('board-games-dataset/database.sqlite')
 # Create database helper
-db=DatabaseHelper(conn)
+db = DatabaseHelper(conn)
 
 # Create AIML Agent
-agent=aiml.Kernel()
+agent = aiml.Kernel()
 agent.bootstrap(learnFiles='boardgames.xml')  # Add link to AIML file
 
 
 # CLI chatbot
 while True:
     try:
-        question=input("-> ")
+        question = input("-> ")
     except(KeyboardInterrupt, EOFError) as e:
         print("Goodbye")
         break
 
     # Response agent decision logic here
-    response_agent=ResponseAgent.AIML
+    response_agent = ResponseAgent.AIML
 
     if response_agent == ResponseAgent.AIML:
-        response=agent.respond(question)
+        response = agent.respond(question)
     elif response_agent == ResponseAgent.IMAGE:
         raise NotImplementedError
     elif response_agent == ResponseAgent.TOY:
@@ -173,15 +174,14 @@ while True:
         raise NotImplementedError
 
     if response[0] == '^':  # ^CommandSubcommand$Param
-        params=response.split('$')
-        command_block=params[0]  # ^CommandSubcommand
-        command=command_block[1:]  # CommandSubcommand
-        print(command)
+        params = response.split('$')
+        command_block = params[0]  # ^CommandSubcommand
+        command = command_block[1:]  # CommandSubcommand
         if command[0] == 'e':  # End chat
             print(params[1])
             break
         if command[0] == 's':  # Search DB
-            sub_command=command[1]
+            sub_command = command[1]
             if sub_command == 'n':
                 DatabaseHelper.pretty_print_dataframe(
                     db.search_by_name(params[1]))  # Print Details
@@ -205,8 +205,9 @@ while True:
                 print('Sorry, something went wrong.')
         elif command[0] == 'X':
             # run similarity cosine across database
-            print('Similarity run')
-            input_tfidf=TfidfVectorizer(params[1])
-
+            print(question)
+            input_tfidf = TfidfVectorizer().fit_transform(list(question))
+            similar = db.search_by_similarity(input_tfidf)
+            print(similar)
     else:
         print(response)
