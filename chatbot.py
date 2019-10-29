@@ -3,6 +3,8 @@ import aiml
 import sqlite3
 import pandas as pd
 from enum import Enum
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 class DatabaseHelper():
@@ -28,6 +30,11 @@ class DatabaseHelper():
             0) if x.dtype.kind in 'biufc' else x.fillna('#'))
         # Lowercase names for ease of searching
         cleaned_data['details.searchname'] = cleaned_data['details.name'].str.lower()
+
+        # Create a column of TF-IDF Scores on details.description
+        cleaned_data['tf-idf'] = cleaned_data['details.description'].apply(
+            lambda y: TfidfVectorizer(y))
+        print(cleaned_data.head())
         return cleaned_data
 
     def search_by_name(self, name: str) -> pd.DataFrame:
@@ -112,46 +119,50 @@ class DatabaseHelper():
             return result.iloc[:, :-1]  # Do not return 'details.searchname'
         else:
             return None
-    
+
+    def search_by_similarity(self, score: float) -> pd.DataFrame:
+        raise NotImplementedError()
+        # search = self.proccessed_df.apply(lambda x: cosine_similarity(x['tf-idf'], score)
+        
+
     @staticmethod
-    def pretty_print_dataframe(df: pd.DataFrame, details = False, columns='') -> str:
-        if details == True:
-            for entry in df:
-                print(entry)
-        else:
+    def pretty_print_dataframe(dataframe: pd.DataFrame, columns=['details.name', 'details.description', 'attributes.boardgamecategory', 'stats.bayesaverage']):
+        data_to_print: pd.DataFrame=dataframe[columns]
+        for index, entry in data_to_print.iterrows():
+            print(entry)
 
 
 class ResponseAgent(Enum):
-    AIML = 'aiml'
-    IMAGE = 'image'
-    TOY = 'toy'
-    STS = 'sts'
-    RL = 'rl'
+    AIML='aiml'
+    IMAGE='image'
+    TOY='toy'
+    STS='sts'
+    RL='rl'
 
 
 # Import database
-conn = sqlite3.connect('board-games-dataset/database.sqlite')
+conn=sqlite3.connect('board-games-dataset/database.sqlite')
 # Create database helper
-db = DatabaseHelper(conn)
+db=DatabaseHelper(conn)
 
 # Create AIML Agent
-agent = aiml.Kernel()
+agent=aiml.Kernel()
 agent.bootstrap(learnFiles='boardgames.xml')  # Add link to AIML file
 
 
 # CLI chatbot
 while True:
     try:
-        question = input("-> ")
+        question=input("-> ")
     except(KeyboardInterrupt, EOFError) as e:
         print("Goodbye")
         break
 
     # Response agent decision logic here
-    response_agent = ResponseAgent.AIML
+    response_agent=ResponseAgent.AIML
 
     if response_agent == ResponseAgent.AIML:
-        response = agent.respond(question)
+        response=agent.respond(question)
     elif response_agent == ResponseAgent.IMAGE:
         raise NotImplementedError
     elif response_agent == ResponseAgent.TOY:
@@ -162,17 +173,18 @@ while True:
         raise NotImplementedError
 
     if response[0] == '^':  # ^CommandSubcommand$Param
-        params = response.split('$')
-        command_block = params[0] # ^CommandSubcommand
-        command = command_block[1:] # CommandSubcommand
+        params=response.split('$')
+        command_block=params[0]  # ^CommandSubcommand
+        command=command_block[1:]  # CommandSubcommand
         print(command)
         if command[0] == 'e':  # End chat
             print(params[1])
             break
         if command[0] == 's':  # Search DB
-            sub_command = command[1]
+            sub_command=command[1]
             if sub_command == 'n':
-                print(db.search_by_name(params[1])) # Print Details
+                DatabaseHelper.pretty_print_dataframe(
+                    db.search_by_name(params[1]))  # Print Details
             elif sub_command == 'p':
                 db.search_by_minplayers(params[1])
             elif sub_command == 'y':
@@ -184,8 +196,8 @@ while True:
                 raise NotImplementedError  # Need to segregate params into a list
                 db.search_by_multiple_category()
             elif sub_command == 't':
-                raise NotImplementedError  # Need to segregate params
-                db.search_by_playtime()
+                # raise NotImplementedError  # Need to segregate params
+                db.search_by_playtime(int(params[1]))
             elif sub_command == 's':
                 db.search_by_score(float(params[1]))
                 pass
@@ -193,6 +205,8 @@ while True:
                 print('Sorry, something went wrong.')
         elif command[0] == 'X':
             # run similarity cosine across database
-            from sklearn.
+            print('Similarity run')
+            input_tfidf=TfidfVectorizer(params[1])
+
     else:
         print(response)

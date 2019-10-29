@@ -21,8 +21,27 @@
 <category><pattern> BYE </pattern>
   <template>^e$Goodbye</template></category>
 
-  <category><pattern> WHAT IS * </pattern>
+<!-- Data query patterns -->
+<category><pattern> WHAT IS * </pattern>
   <template>^sn$<star index="1"/></template></category>
+
+<category><pattern> WHAT IS A GOOD GAME FOR *  PLAYERS</pattern>
+  <template>^sp$<star index="1"/></template></category>
+
+<category><pattern> WHAT GAMES HAVE BEEN PUBLISHED SINCE * </pattern>
+  <template>^sy$<star index="1"/></template></category>
+
+<category><pattern> WHAT GAMES HAVE THIS CATEGORY * </pattern>
+  <template>^sc$<star index="1"/></template></category>
+
+<category><pattern> WHAT GAMES HAVE THESE CATERGORIES * </pattern>
+  <template>^sg$<star index="1"/></template></category>
+
+<category><pattern> WHAT GAME HAS A * HOUR PLAYTIME</pattern>
+  <template>^st$<star index="1"/></template></category>
+
+<category><pattern> WHAT GAME HAS A SCORE MORE THAN * </pattern>
+  <template>^ss$<star index="1"/></template></category>
 
   <!-- Default reaction -->
 <category><pattern> * </pattern>
