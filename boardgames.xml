@@ -34,21 +34,27 @@
 <category><pattern> WHAT GAMES HAVE THIS CATEGORY * </pattern>
   <template>^sc$<star index="1"/></template></category>
 
+<category><pattern> WHAT GAMES ARE IN THE CATEGORY *</pattern>
+  <template><srai>WHAT GAMES HAVE THIS CATERGORY <star/></srai><template></category>
+
 <category><pattern> WHAT GAMES HAVE THESE CATERGORIES * </pattern>
   <template>^sg$<star index="1"/></template></category>
 
 <category><pattern> WHAT GAME HAS A * HOUR PLAYTIME</pattern>
   <template>^st$<star index="1"/></template></category>
 
-<category><pattern> WHAT GAME HAS A SCORE MORE THAN * </pattern>
+<category><pattern> WHAT GAMES CAN I PLAY IN * HOURS</pattern>
+  <template><srai>WHAT GAME HAS A <star/> HOUR PLAYTIME</srai><template></category>
+
+<category><pattern> WHAT GAME HAS A SCORE OF MORE THAN * </pattern>
   <template>^ss$<star index="1"/></template></category>
 
 <!-- Search via similarity of the description  -->
 <category><pattern> I WANT A GAME ABOUT * </pattern>
-  <template>^X$<star index="1"/></template></category>
+  <template>^x$<star index="1"/></template></category>
 
 <!-- Default reaction -->
 <category><pattern> * </pattern>
-  <template>^X$<star index="1+"/></template></category>
+  <template><star index="1+"/></template></category>
 
 </aiml>

@@ -1,6 +1,7 @@
 import numpy as np
 import aiml
 import sqlite3
+import re
 import pandas as pd
 from enum import Enum
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -13,6 +14,7 @@ class DatabaseHelper():
     def __init__(self, connection: sqlite3.Connection):
         self._df = pd.read_sql_query('SELECT * FROM BoardGames', conn)
         self.proccessed_df = self.dataframe_preprocess(self._df)
+        print(self.proccessed_df.iloc[0]['details.description'])
 
     def dataframe_preprocess(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         '''Takes in the raw DataFrame from the SQL and processes it to clean up data and access only required columns and fields'''
@@ -30,11 +32,6 @@ class DatabaseHelper():
             0) if x.dtype.kind in 'biufc' else x.fillna('#'))
         # Lowercase names for ease of searching
         cleaned_data['details.searchname'] = cleaned_data['details.name'].str.lower()
-
-        # Create a column of TF-IDF vectors on details.description
-        description_column = cleaned_data['details.description'].tolist()
-        print(description_column[:2])
-        self.tfidfs = TfidfVectorizer().fit_transform(description_column)
         return cleaned_data
 
     def search_by_name(self, name: str) -> pd.DataFrame:
@@ -120,18 +117,27 @@ class DatabaseHelper():
         else:
             return None
 
-    def search_by_similarity(self, score: list) -> pd.DataFrame:
-        cosine_similarities = linear_kernel(score, self.tfidfs).flatten()
-        similar_indexes = cosine_similarities.argsort()[:5:-1]
-        similar_entries = self.proccessed_df.iloc(similar_indexes)
+    def search_by_similarity(self, query: str, min_confidence: float) -> pd.DataFrame:
+        # Create a column of TF-IDF vectors on details.description
+        description_column = [query] + \
+            self.proccessed_df['details.description'].tolist()
+        tfidfs = TfidfVectorizer().fit_transform(description_column)
+        cosine_similarities = linear_kernel(tfidfs[0:1], tfidfs).flatten()
+        similar_indexes = cosine_similarities.argsort()[:-5:-1]
+        print(cosine_similarities[similar_indexes])
+        accurate_indexes = [
+            i for i in similar_indexes if cosine_similarities[i] > min_confidence]
+        similar_entries = self.proccessed_df.iloc[accurate_indexes]
         return similar_entries
 
     @staticmethod
-    def pretty_print_dataframe(dataframe: pd.DataFrame, columns=['details.name', 'details.description', 'attributes.boardgamecategory', 'stats.bayesaverage']):
+    def pretty_print_dataframe(dataframe: pd.DataFrame, columns=['details.name', 'attributes.boardgamecategory', 'stats.average']):
         data_to_print: pd.DataFrame = dataframe[columns]
         for index, entry in data_to_print.iterrows():
-            print(entry)
-
+            output = ''
+            for i in columns:
+                output += f'{i}: {entry[i]}\n'
+            print(f'{output}')
 
 class ResponseAgent(Enum):
     AIML = 'aiml'
@@ -180,34 +186,56 @@ while True:
         if command[0] == 'e':  # End chat
             print(params[1])
             break
-        if command[0] == 's':  # Search DB
+        elif command[0] == 's':  # Search DB
             sub_command = command[1]
             if sub_command == 'n':
                 DatabaseHelper.pretty_print_dataframe(
                     db.search_by_name(params[1]))  # Print Details
             elif sub_command == 'p':
-                db.search_by_minplayers(params[1])
+                results = db.search_by_minplayers(params[1])
+                top_five = results.sort_values(by='stats.average', ascending=False)[0:5]
+                print(f'{len(results)} games support {params[1]} or more players.')
+                print(f'The top five are:')
+                DatabaseHelper.pretty_print_dataframe(top_five)
             elif sub_command == 'y':
-                db.search_by_yearpublished(int(params[1]))
+                results = db.search_by_yearpublished(int(params[1]))
+                top_five = results.sort_values(by='stats.average', ascending=False)[0:5]
+                print(f'{len(results)} games have been published since {params[1]}.')
+                print(f'The top five are:')
+                DatabaseHelper.pretty_print_dataframe(top_five)
             elif sub_command == 'c':
-                raise NotImplementedError  # Need to segregate params into a list
-                db.search_by_specific_category()
+                items = re.split(' |,', params[1])
+                results = db.search_by_specific_category(items)
+                top_five = results.sort_values(by='stats.average', ascending=False)[0:5]
+                print(f'{len(results)} games have the category {params[1]}.')
+                print(f'The top five are:')
+                DatabaseHelper.pretty_print_dataframe(top_five)
             elif sub_command == 'g':
-                raise NotImplementedError  # Need to segregate params into a list
-                db.search_by_multiple_category()
+                items = re.split(' |,', params[1])
+                results = db.search_by_multiple_category(items)
+                top_five = results.sort_values(by='stats.average', ascending=False)[0:5]
+                print(f'{len(results)} games have the categories {params[1]}.')
+                print(f'The top five are:')
+                DatabaseHelper.pretty_print_dataframe(top_five)
             elif sub_command == 't':
                 # raise NotImplementedError  # Need to segregate params
-                db.search_by_playtime(int(params[1]))
+                results = db.search_by_playtime(int(params[1]))
+                top_five = results.sort_values(by='stats.average', ascending=False)[0:5]
+                print(f'{len(results)} games have playtimes less than {params[1]} hours.')
+                print(f'The top five are:')
+                DatabaseHelper.pretty_print_dataframe(top_five)
             elif sub_command == 's':
-                db.search_by_score(float(params[1]))
-                pass
+                results = db.search_by_score(float(params[1]))
+                top_five = results.sort_values(by='stats.average', ascending=False)[0:5]
+                print(f'{len(results)} games have scores of {params[1]} or more.')
+                print(f'The top five are:')
+                DatabaseHelper.pretty_print_dataframe(top_five)
             else:
                 print('Sorry, something went wrong.')
         elif command[0] == 'X':
             # run similarity cosine across database
-            print(question)
-            input_tfidf = TfidfVectorizer().fit_transform(list(question))
-            similar = db.search_by_similarity(input_tfidf)
-            print(similar)
+            similar = db.search_by_similarity(params[1], 0.4)
+            print('The closest matches I have are:')
+            DatabaseHelper.pretty_print_dataframe(similar)
     else:
         print(response)
