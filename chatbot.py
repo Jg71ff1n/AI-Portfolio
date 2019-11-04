@@ -139,6 +139,16 @@ class DatabaseHelper():
                 output += f'{i}: {entry[i]}\n'
             print(f'{output}')
 
+
+def print_top_entries(dataframe: pd.DataFrame, message:str, amount=5):
+    '''
+    Some doc string here
+    '''
+    top = dataframe.sort_values(by='stats.average', ascending=False)[0:amount]
+    print(message)
+    print(f'The top {amount} are:')
+    DatabaseHelper.pretty_print_dataframe(top)
+
 class ResponseAgent(Enum):
     AIML = 'aiml'
     IMAGE = 'image'
@@ -192,11 +202,13 @@ while True:
                 DatabaseHelper.pretty_print_dataframe(
                     db.search_by_name(params[1]))  # Print Details
             elif sub_command == 'p':
-                results = db.search_by_minplayers(params[1])
-                top_five = results.sort_values(by='stats.average', ascending=False)[0:5]
-                print(f'{len(results)} games support {params[1]} or more players.')
-                print(f'The top five are:')
-                DatabaseHelper.pretty_print_dataframe(top_five)
+                results = db.search_by_minplayers(int(params[1]))
+                message =f'{len(results)} games support {params[1]} or more players.'
+                print_top_entries(results, message)
+                # top_five = results.sort_values(by='stats.average', ascending=False)[0:5]
+                # print(f'{len(results)} games support {params[1]} or more players.')
+                # print(f'The top five are:')
+                # DatabaseHelper.pretty_print_dataframe(top_five)
             elif sub_command == 'y':
                 results = db.search_by_yearpublished(int(params[1]))
                 top_five = results.sort_values(by='stats.average', ascending=False)[0:5]
