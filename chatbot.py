@@ -123,25 +123,36 @@ class DatabaseHelper():
             self.proccessed_df['details.description'].tolist()
         tfidfs = TfidfVectorizer().fit_transform(description_column)
         cosine_similarities = linear_kernel(tfidfs[0:1], tfidfs).flatten()
-        similar_indexes = cosine_similarities.argsort()[:-6:-1] #top 6 as one entry is query 
+        # top 6 as one entry is query
+        similar_indexes = cosine_similarities.argsort()[:-6:-1]
         accurate_indexes = [
-            i-1 for i in similar_indexes if cosine_similarities[i] > min_confidence] # i-1 to account for query padding the cosine indexes
+            i-1 for i in similar_indexes if cosine_similarities[i] > min_confidence]  # i-1 to account for query padding the cosine indexes
         similar_entries = self.proccessed_df.iloc[accurate_indexes[1:]]
-        return similar_entries
+        return similar_entries, cosine_similarities[similar_indexes].tolist()[1:]
 
     @staticmethod
-    def pretty_print_dataframe(dataframe: pd.DataFrame, columns={'details.name': 'Name', 'attributes.boardgamecategory': 'Categories', 'stats.average': 'Rating'}):
+    def pretty_print_dataframe(dataframe: pd.DataFrame, columns=None, confidence_scores=None):
+        if columns is None:
+            columns = {
+                'details.name': 'Name',
+                'attributes.boardgamecategory': 'Categories',
+                'stats.average': 'Rating'
+            }
         data_to_print: pd.DataFrame = dataframe[columns]
+        i = 0
         for index, entry in data_to_print.iterrows():
             output = ''
             for key, name in columns.items():
                 output += f'{name}: {entry[key]}\n'
+            if confidence_scores is not None:
+                output += f'With a similarity of {round(confidence_scores[i]* 100, ndigits=2) }%\n'
+            i = i+1
             print(f'{output}')
 
 
 def print_top_entries(dataframe: pd.DataFrame, message: str, amount=5):
     '''
-    Some doc string here
+    Prints the top X entries by unweighted score, where X is defined by amount. 
     '''
     top = dataframe.sort_values(by='stats.average', ascending=False)[0:amount]
     print(message)
@@ -155,7 +166,6 @@ class ResponseAgent(Enum):
     TOY = 'toy'
     STS = 'sts'
     RL = 'rl'
-
 
 
 # Create database helper
@@ -256,8 +266,9 @@ while True:
             else:
                 print('Sorry, something went wrong.')
         elif command[0] == 'x':  # run cosine similarity across database
-            similar = db.search_by_similarity(params[1], 0.2)
+            similar, confidence_score = db.search_by_similarity(params[1], 0.2)
             print('The closest matches I have are:')
-            DatabaseHelper.pretty_print_dataframe(similar)
+            DatabaseHelper.pretty_print_dataframe(
+                similar, confidence_scores=confidence_score)
     else:
         print(response)
