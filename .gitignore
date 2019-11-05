@@ -109,3 +109,4 @@ venv.bak/
 *.sqlite
 
 /exports
+database.csv
