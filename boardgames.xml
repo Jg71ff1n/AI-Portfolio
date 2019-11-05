@@ -1,31 +1,82 @@
 <aiml version="1.0.1" encoding="UTF-8">
 
-<category> <pattern> HELLO </pattern>
-  <template>Hello! How are you?</template> </category>
+<category>
+  <pattern>HELLO</pattern>
+  <template>Hello! What's your name?</template>
+</category>
 
-<category> <pattern> HELLO * </pattern>
-  <template><srai>HELLO</srai></template> </category>
+<category><pattern>HELLO *</pattern>
+  <template><srai>HELLO</srai></template></category>
 
-<category> <pattern> HI </pattern>
-  <template><srai>HELLO</srai></template> </category>
+<category> <pattern>HI</pattern>
+  <template><srai>HELLO</srai></template></category>
 
-<category> <pattern> HI * </pattern>
-  <template><srai>HELLO</srai></template> </category>
+<category> <pattern>HI *</pattern>
+  <template><srai>HELLO</srai></template></category>
+
+<category>
+  <pattern>MY NAME IS *</pattern>
+  <template>
+    Hi, <set name="usersname"><star/></set>. How are you?
+  </template>
+</category>
+
+<category>
+  <pattern>I AM FINE</pattern>
+  <template>That's good to know. Try asking me what I can do.</template>
+</category>
+
+<category> <pattern>I AM GOOD</pattern>
+  <template><srai>I AM FINE</srai></template></category>
 
 <category> <pattern> HOW ARE YOU </pattern>
-  <template>I'm functioning within normal parameters, thanks for asking.</template></category>
+  <template>I'm good thanks, try asking me what I can do.</template></category>
 
-<category><pattern> I AM FINE </pattern>
-  <template>That's good to know. What would you know about board games?</template></category>
+<category>
+  <pattern>I AM BORED</pattern>
+  <template>Do you play board games</template>  
+</category>
+
+<category>
+  <pattern>YES</pattern>
+  <that>DO YOU PLAY BOARD GAMES</that>
+  <template>Great! I love playing board games! Ask me all about them!</template>
+</category>
+
+<category>
+  <pattern>NO</pattern>
+  <that>DO YOU PLAY BOARD GAMES</that>
+  <template>Ohh dear, maybe I can help change that. Try asking for a game suggestion, if you need help, just ask me what can I do</template>
+</category>
+
+
+<category><pattern> WHAT CAN YOU DO </pattern>
+  <template>
+    I can take your questions like: 
+    <random>
+      <li>What is GAME NAME? </li>
+      <li>What are good games for AMOUNT players?</li>
+      <li>What games have been published since YEAR?</li>
+      <li>What games have this category CATERGORIES?></li>
+      <li>What games have these catergories LIST OF CATERGORIES?</li>
+      <li>What games have a AMOUNT hour playtime?</li>
+      <li>What games have a score of more than SCORE?</li>
+    </random>
+    As well as giving you suggestions for games based on a description. Using the phrase I want a game about DESCRIPTION.
+  </template>
+</category>
 
 <category><pattern> BYE </pattern>
-  <template>^e$Goodbye</template></category>
+  <template>^e$Goodbye, <get name="usersname"/>.</template></category>
+
+<category><pattern> GOODBYE </pattern>
+  <template><srai>BYE</srai></template></category>
 
 <!-- Data query patterns -->
 <category><pattern> WHAT IS * </pattern>
   <template>^sn$<star index="1"/></template></category>
 
-<category><pattern> WHAT IS A GOOD GAME FOR *  PLAYERS</pattern>
+<category><pattern> WHAT ARE GOOD GAMES FOR *  PLAYERS</pattern>
   <template>^sp$<star index="1"/></template></category>
 
 <category><pattern> WHAT GAMES HAVE BEEN PUBLISHED SINCE * </pattern>
@@ -33,20 +84,20 @@
 
 <category><pattern> WHAT GAMES HAVE THIS CATEGORY * </pattern>
   <template>^sc$<star index="1"/></template></category>
-<!-- 
+
 <category><pattern> WHAT GAMES ARE IN THE CATEGORY *</pattern>
-  <template><srai>WHAT GAMES HAVE THIS CATERGORY <star/></srai><template></category> -->
+  <template><srai>WHAT GAMES HAVE THIS CATERGORY <star/></srai></template></category>
 
 <category><pattern> WHAT GAMES HAVE THESE CATERGORIES * </pattern>
   <template>^sg$<star index="1"/></template></category>
 
-<category><pattern> WHAT GAME HAS A * HOUR PLAYTIME</pattern>
+<category><pattern> WHAT GAMES HAVE A * HOUR PLAYTIME</pattern>
   <template>^st$<star index="1"/></template></category>
 
-<!-- <category><pattern> WHAT GAMES CAN I PLAY IN * HOURS</pattern>
-  <template><srai>WHAT GAME HAS A <star/> HOUR PLAYTIME</srai><template></category> -->
+<category><pattern> WHAT GAMES CAN I PLAY IN * HOURS</pattern>
+  <template><srai>WHAT GAMES HAVE A <star/> HOUR PLAYTIME</srai></template></category>
 
-<category><pattern> WHAT GAME HAS A SCORE OF MORE THAN * </pattern>
+<category><pattern> WHAT GAMES HAVE A SCORE OF MORE THAN * </pattern>
   <template>^ss$<star index="1"/></template></category>
 
 <!-- Search via similarity of the description  -->
@@ -55,6 +106,6 @@
 
 <!-- Default reaction -->
 <category><pattern> * </pattern>
-  <template><star index="1"/></template></category>
+  <template>Sorry I did not understand "<star index="1"/>". Please ask again.</template></category>
 
 </aiml>

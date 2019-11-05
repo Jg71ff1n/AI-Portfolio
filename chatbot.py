@@ -14,7 +14,6 @@ class DatabaseHelper():
     def __init__(self, connection: sqlite3.Connection):
         self._df = pd.read_sql_query('SELECT * FROM BoardGames', conn)
         self.proccessed_df = self.dataframe_preprocess(self._df)
-        print(self.proccessed_df.iloc[0]['details.description'])
 
     def dataframe_preprocess(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         '''Takes in the raw DataFrame from the SQL and processes it to clean up data and access only required columns and fields'''
@@ -111,7 +110,7 @@ class DatabaseHelper():
         Searches the dataframe by weighted user scores, returns all entries with a bayes average >= score provided.
         Returns an empty dataframe when no items are found.
         '''
-        result = self.proccessed_df.loc[self.proccessed_df['stats.bayesaverage'] >= score]
+        result = self.proccessed_df.loc[self.proccessed_df['stats.average'] >= score]
         if len(result.index) > 0:
             return result.iloc[:, :-1]  # Do not return 'details.searchname'
         else:
@@ -131,16 +130,16 @@ class DatabaseHelper():
         return similar_entries
 
     @staticmethod
-    def pretty_print_dataframe(dataframe: pd.DataFrame, columns=['details.name', 'attributes.boardgamecategory', 'stats.average']):
+    def pretty_print_dataframe(dataframe: pd.DataFrame, columns={'details.name': 'Name', 'attributes.boardgamecategory': 'Categories', 'stats.average': 'Rating'}):
         data_to_print: pd.DataFrame = dataframe[columns]
         for index, entry in data_to_print.iterrows():
             output = ''
-            for i in columns:
-                output += f'{i}: {entry[i]}\n'
+            for key, name in columns.items():
+                output += f'{name}: {entry[key]}\n'
             print(f'{output}')
 
 
-def print_top_entries(dataframe: pd.DataFrame, message:str, amount=5):
+def print_top_entries(dataframe: pd.DataFrame, message: str, amount=5):
     '''
     Some doc string here
     '''
@@ -148,6 +147,7 @@ def print_top_entries(dataframe: pd.DataFrame, message:str, amount=5):
     print(message)
     print(f'The top {amount} are:')
     DatabaseHelper.pretty_print_dataframe(top)
+
 
 class ResponseAgent(Enum):
     AIML = 'aiml'
@@ -180,6 +180,8 @@ while True:
 
     if response_agent == ResponseAgent.AIML:
         response = agent.respond(question)
+        if len(response) is 0:
+            continue
     elif response_agent == ResponseAgent.IMAGE:
         raise NotImplementedError
     elif response_agent == ResponseAgent.TOY:
@@ -199,53 +201,62 @@ while True:
         elif command[0] == 's':  # Search DB
             sub_command = command[1]
             if sub_command == 'n':
-                DatabaseHelper.pretty_print_dataframe(
-                    db.search_by_name(params[1]))  # Print Details
+                results = db.search_by_name(params[1])
+                if results is not None:
+                    DatabaseHelper.pretty_print_dataframe(results, columns={
+                        'details.name': 'Name',
+                        'attributes.boardgamecategory': 'Categories',
+                        'details.description': 'Description',
+                        'stats.average': 'Rating'})
+                else:
+                    print('Sorry, no results were found')
             elif sub_command == 'p':
                 results = db.search_by_minplayers(int(params[1]))
-                message =f'{len(results)} games support {params[1]} or more players.'
-                print_top_entries(results, message)
-                # top_five = results.sort_values(by='stats.average', ascending=False)[0:5]
-                # print(f'{len(results)} games support {params[1]} or more players.')
-                # print(f'The top five are:')
-                # DatabaseHelper.pretty_print_dataframe(top_five)
+                if results is not None:
+                    message = f'{len(results)} games support {params[1]} or more players.'
+                    print_top_entries(results, message)
+                else:
+                    print('Sorry, no results were found')
             elif sub_command == 'y':
                 results = db.search_by_yearpublished(int(params[1]))
-                top_five = results.sort_values(by='stats.average', ascending=False)[0:5]
-                print(f'{len(results)} games have been published since {params[1]}.')
-                print(f'The top five are:')
-                DatabaseHelper.pretty_print_dataframe(top_five)
+                if results is not None:
+                    message = f'{len(results)} games have been published since {params[1]}.'
+                    print_top_entries(results, message)
+                else:
+                    print('Sorry, no results were found')
             elif sub_command == 'c':
                 items = re.split(' |,', params[1])
                 results = db.search_by_specific_category(items)
-                top_five = results.sort_values(by='stats.average', ascending=False)[0:5]
-                print(f'{len(results)} games have the category {params[1]}.')
-                print(f'The top five are:')
-                DatabaseHelper.pretty_print_dataframe(top_five)
+                if results is not None:
+                    message = f'{len(results)} games have the category {params[1]}.'
+                    print_top_entries(results, message)
+                else:
+                    print('Sorry, no results were found')
             elif sub_command == 'g':
                 items = re.split(' |,', params[1])
                 results = db.search_by_multiple_category(items)
-                top_five = results.sort_values(by='stats.average', ascending=False)[0:5]
-                print(f'{len(results)} games have the categories {params[1]}.')
-                print(f'The top five are:')
-                DatabaseHelper.pretty_print_dataframe(top_five)
+                if results is not None:
+                    message = f'{len(results)} games have the categories {params[1]}.'
+                    print_top_entries(results, message)
+                else:
+                    print('Sorry, no results were found')
             elif sub_command == 't':
-                # raise NotImplementedError  # Need to segregate params
                 results = db.search_by_playtime(int(params[1]))
-                top_five = results.sort_values(by='stats.average', ascending=False)[0:5]
-                print(f'{len(results)} games have playtimes less than {params[1]} hours.')
-                print(f'The top five are:')
-                DatabaseHelper.pretty_print_dataframe(top_five)
+                if results is not None:
+                    message = f'{len(results)} games have playtimes less than {params[1]} hours.'
+                    print_top_entries(results, message)
+                else:
+                    print('Sorry, no results were found')
             elif sub_command == 's':
                 results = db.search_by_score(float(params[1]))
-                top_five = results.sort_values(by='stats.average', ascending=False)[0:5]
-                print(f'{len(results)} games have scores of {params[1]} or more.')
-                print(f'The top five are:')
-                DatabaseHelper.pretty_print_dataframe(top_five)
+                if results is not None:
+                    message = f'{len(results)} games have scores of {params[1]} or more.'
+                    print_top_entries(results, message)
+                else:
+                    print('Sorry, no results were found')
             else:
                 print('Sorry, something went wrong.')
-        elif command[0] == 'X':
-            # run similarity cosine across database
+        elif command[0] == 'x':  # run cosine similarity across database
             similar = db.search_by_similarity(params[1], 0.4)
             print('The closest matches I have are:')
             DatabaseHelper.pretty_print_dataframe(similar)
