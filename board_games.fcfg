@@ -61,11 +61,14 @@ Det[NUM=sg, SEM=<\P.P(x)> ] -> 'what'
 TV[NUM=sg, SEM=<\P.P>, TNS=pres] -> 'is'
 EX[SEM=<\P.P(x)>] -> 'there'
 PRON[NUM=sg, SEM=<\P Q.exists x.(Q(x))>] -> 'anything'
-IN[NUM=sg, SEM=<\X x.X(\y.north(x,y))>, TNS=pres] -> 'above' | 'north'
 P[PFORM=of,SEM=<\P.P>] -> 'of'
 Det[NUM=sg, SEM=<\P.P>] -> 'the'
 
+IN[NUM=sg, SEM=<\X x.X(\y.north(x,y))>, TNS=pres] -> 'above' | 'north'
 IN[NUM=sg, SEM=<\X x.X(\y.south(x,y))>, TNS=pres] -> 'below' | 'south'
+IN[NUM=sg, SEM=<\X x.X(\y.east(x,y))>, TNS=pres] -> 'right' | 'east'
+IN[NUM=sg, SEM=<\X x.X(\y.west(x,y))>, TNS=pres] -> 'left' | 'west'
+IN[NUM=sg, SEM=<\X x.X(\y.northeast(x,y))>, TNS=pres] -> 'northeast'
 
 
 

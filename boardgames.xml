@@ -73,7 +73,7 @@
   <template><srai>BYE</srai></template></category>
 
 <!-- Data query patterns -->
-<category><pattern> WHAT IS * </pattern>
+<category><pattern> TELL ME ABOUT * </pattern>
   <template>^sn$<star index="1"/></template></category>
 
 <category><pattern> WHAT ARE GOOD GAMES FOR *  PLAYERS</pattern>
