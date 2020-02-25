@@ -15,16 +15,15 @@ class ChessModel():
         # Add north is the opposite of south etc...
         self.assumptions.append(read_expression('north(x,y) <-> south(y,x)'))
         self.assumptions.append(read_expression('west(x,y) <-> east(y,x)'))
-        self.assumptions.append(read_expression('northeast(x,y) <-> southwest(y,x)'))
-        self.assumptions.append(read_expression('northwest(x,y) <-> southeast(y,x)'))
-
+        self.assumptions.append(read_expression(
+            'northeast(x,y) <-> southwest(y,x)'))
+        self.assumptions.append(read_expression(
+            'northwest(x,y) <-> southeast(y,x)'))
         # Locational differences are transative
         self.assumptions.append(read_expression(
             'north(x,y) & north(y,z) -> north(x,z)'))
         self.assumptions.append(read_expression(
             'west(x,y) & west(y,z) -> west(x,z)'))
-        # self.assumptions.append(read_expression(
-        #     'northeast(x,y) & east(z,y) -> north(x,z)')) # Close but not quite right
         # Some directions are compositional
         self.assumptions.append(read_expression(
             'northeast(x,y) <-> north(x,y) & east(x,y)'))
@@ -74,12 +73,13 @@ class ChessModel():
             return 'Sorry I do not understand that.'
         for tree in parsed_tokens:
             semantic = tree.label()['SEM']
-        if type(semantic) == nltk.sem.logic.ExistsExpression:  # Looking an exists relation
+        if type(semantic) == nltk.sem.logic.ExistsExpression:  # Looking at an exists relation
             return 'Yes' if self.prove_expression(semantic) else 'No'
         else:
             if 'x3' in str(semantic):  # Finding satisfiers for the query
-                satisfier_strings = ', '.join(str(x)
-                                              for x in self.query_model(semantic))
+                satisfier_strings = ', '.join(
+                    str(x) for x in self.query_model(semantic)
+                )
                 return f'The answer to your question is: {satisfier_strings}'
             else:
                 self.add_assumption(semantic)  # Add an assumption to the model
@@ -92,7 +92,6 @@ class ChessModel():
         self.mace_model = nltk.MaceCommand(None, self.assumptions)
         self.mace_model.build_model()
         self.valuation = self.mace_model.valuation
-        print(self.valuation)
 
     def prove_expression(self, expression) -> bool:
         '''
