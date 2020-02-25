@@ -17,13 +17,14 @@ class ChessModel():
         self.assumptions.append(read_expression('west(x,y) <-> east(y,x)'))
         self.assumptions.append(read_expression('northeast(x,y) <-> southwest(y,x)'))
         self.assumptions.append(read_expression('northwest(x,y) <-> southeast(y,x)'))
+
         # Locational differences are transative
         self.assumptions.append(read_expression(
             'north(x,y) & north(y,z) -> north(x,z)'))
         self.assumptions.append(read_expression(
             'west(x,y) & west(y,z) -> west(x,z)'))
-        self.assumptions.append(read_expression(
-            'northeast(x,y) & east(z,y) -> north(x,z)')) # Close but not quite right
+        # self.assumptions.append(read_expression(
+        #     'northeast(x,y) & east(z,y) -> north(x,z)')) # Close but not quite right
         # Some directions are compositional
         self.assumptions.append(read_expression(
             'northeast(x,y) <-> north(x,y) & east(x,y)'))
@@ -91,7 +92,7 @@ class ChessModel():
         self.mace_model = nltk.MaceCommand(None, self.assumptions)
         self.mace_model.build_model()
         self.valuation = self.mace_model.valuation
-        # print(self.valuation)
+        print(self.valuation)
 
     def prove_expression(self, expression) -> bool:
         '''
@@ -108,10 +109,3 @@ class ChessModel():
         assingment = nltk.Assignment(self.valuation.domain)
         satisfier = model.satisfiers(expression, 'x3', assingment)
         return self.get_satisfier(self.valuation, satisfier)
-
-x = ChessModel()
-print(x.process_input('The Pawn is northeast of the Queen'))
-print(x.process_input('The King is east of the Queen'))
-print(x.process_input('Is there anything west of the Pawn'))
-print(x.process_input('What is east of the Queen'))
-print(x.process_input('What is south of the Pawn'))
