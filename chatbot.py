@@ -6,6 +6,13 @@ import pandas as pd
 from enum import Enum
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
+from FENgen import TileExtractor, ChessBoard, ImageReader
+from cv2 import imread
+import os
+from pathlib import Path
+import nltk
+import itertools
+read_expression = nltk.sem.Expression.fromstring
 
 
 class DatabaseHelper():
@@ -150,6 +157,91 @@ class DatabaseHelper():
             print(f'{output}')
 
 
+class ChessModel():
+
+    # Items of the model
+    pieces = ['Pawn', 'Rook', 'Knight', 'Bishop', 'Queen', 'King']
+    grammar_file = 'board_games.fcfg'
+
+    def __init__(self):
+        # Keep a running list of assumptions
+        self.assumptions = []
+        # Add north is the opposite of south and vice versa
+        self.assumptions.append(read_expression('north(x,y) <-> south(y,x)')) 
+        # Locational differences are transative
+        self.assumptions.append(read_expression('north(x,y) & north(y,z) -> north(x,z)'))
+        # Need to ensure all pieces are treated as unique constants
+        internal_pieces = itertools.combinations(self.pieces, 2)
+        for piece in internal_pieces:
+            self.assumptions.append(read_expression(f'{piece[0]} != {piece[1]}'))
+        self.prover = nltk.Prover9()
+
+    @staticmethod
+    def get_satisfier(valuation: nltk.Valuation, satisfiers: set) -> list:
+        '''
+        Searches for the names of satisfing constants of set satisfiers in the provided valuation
+        '''
+        results = []
+        for satisfier in satisfiers:
+            for k, v in valuation.items():
+                if len(v) == 1:
+                    if v == satisfier:
+                        results.append(k)
+        return results
+
+    def add_assumption(self, expression):
+        '''
+        Adds an expression to the list of assumptions of them model
+        '''
+        if type(expression) == str:
+            expression = read_expression(expression)
+        self.assumptions.append(expression)
+
+    def process_input(self, user_input:str) -> str:
+        '''
+        Takes user input, parses it against the grammar file, selects the method to use, returns output of the action
+        '''
+        print(user_input)
+        parser = nltk.load_parser(self.grammar_file, trace=0)
+        tokens = user_input.lower().split()
+        parsed_tokens = parser.parse(tokens)
+        for tree in parsed_tokens:
+            semantic = tree.label()['SEM']
+        if type(semantic) ==  nltk.sem.logic.ExistsExpression: # Looking an exists relation
+            return 'Yes' if self.prove_expression(semantic) else 'No'
+        else:
+            if 'x3' in str(semantic): # Finding satisfiers for the query
+                satisfier_strings = ', '.join(str(x) for x in self.query_model(semantic))
+                return f'The answer to your question is: {satisfier_strings}'
+            else:
+                self.add_assumption(semantic) # Add an assumption to the model
+                return 'I have addded that knowledge to my model'
+
+    def build_model(self):
+        '''
+        Builds the Mace model based on the current assumptions
+        '''
+        self.mace_model = nltk.MaceCommand(None, self.assumptions)
+        self.mace_model.build_model()
+        self.valuation = self.mace_model.valuation
+
+    def prove_expression(self, expression) -> bool:
+        '''
+        Attempts to prove an expression based on the current assumptions
+        '''
+        return self.prover.prove(expression, self.assumptions)
+
+    def query_model(self, expression) -> list:
+        '''
+        Queries the model based on the expression, returns any satisfing answers
+        '''
+        self.build_model()
+        model = nltk.Model(self.valuation.domain, self.valuation)
+        assingment = nltk.Assignment(self.valuation.domain)
+        satisfier = model.satisfiers(expression, 'x3', assingment)
+        return self.get_satisfier(self.valuation, satisfier)
+
+
 def print_top_entries(dataframe: pd.DataFrame, message: str, amount=5):
     '''
     Prints the top X entries by unweighted score, where X is defined by amount. 
@@ -174,7 +266,8 @@ db = DatabaseHelper('database.csv')
 # Create AIML Agent
 agent = aiml.Kernel()
 agent.bootstrap(learnFiles='boardgames.xml')  # Add link to AIML file
-
+image_classifier = ImageReader()
+chess_board = ChessBoard()
 
 # CLI chatbot
 while True:
@@ -270,5 +363,26 @@ while True:
             print('The closest matches I have are:')
             DatabaseHelper.pretty_print_dataframe(
                 similar, confidence_scores=confidence_score)
+        elif command[0] == 'i':  # run image recognition on the game
+            sub_command = command[1]
+            if sub_command == 'p':
+                pwd = Path(os.path.dirname(os.path.realpath(__file__)))
+                found_files = [f for f in pwd.glob(
+                    f'{params[1]}.*') if f.is_file() and f.suffix in ['.png', '.jpeg', '.jpg']]
+                if len(found_files) == 0:
+                    print(
+                        f'Sorry I couldn\'t find a file called {params[1]} in the directory {pwd}')
+                image = imread(found_files[0].name)
+                chess_board = image_classifier.read_board(image)
+                print(chess_board)
+                print(f'The FEN for this is: {chess_board.create_fen()}')
+            elif sub_command == 'b':
+                print(f'The current board is:\n {chess_board}')
+            elif sub_command == 'n':
+                print(f'The current state is: {chess_board.create_fen()}')
+            elif sub_command == 'm':
+                positions = params[1].split('#')
+                print(chess_board.move_piece(positions[0], positions[1]))
     else:
+        nltk.evaluate_sents(response, )
         print(response)

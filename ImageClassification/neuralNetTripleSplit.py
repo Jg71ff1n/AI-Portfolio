@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 from pathlib import Path
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow.keras.models import Sequential, save_model
+from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Conv2D, Flatten, Dropout, MaxPooling2D
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.utils import to_categorical
@@ -10,12 +10,23 @@ import os
 import numpy as np
 # import matplotlib
 # matplotlib.use('Agg')
-print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        # Currently, memory growth needs to be the same across GPUs
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+        print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+    except RuntimeError as e:
+        # Memory growth must be set before GPUs have been initialized
+        print(e)
+print("Num GPUs Available: ", len(
+    tf.config.experimental.list_physical_devices('GPU')))
 
-# https://github.com/Elucidation/tensorflow_chessbot/blob/master/tensorflow_learn_cnn.ipynb
 pwd = os.path.dirname(os.path.realpath(__file__))
-PATH = os.path.join(pwd, 'piecesDataset')
-# ~/AI-Portfolio/ImageClassification/ImageDataset
+# ~/AI-Portfolio/ImageClassification/
+PATH = os.path.join(pwd, 'piecesDatasetAll')
 
 train_dir = Path(os.path.join(PATH, 'train'))
 test_dir = Path(os.path.join(PATH, 'test'))
@@ -47,8 +58,8 @@ epochs = 15
 IMG_HEIGHT = 50
 IMG_WIDTH = 50
 
-train_image_generator = ImageDataGenerator(rescale=1./255)
-    # validation_split=0.2)
+train_image_generator = ImageDataGenerator(rescale=1./255,
+                                           validation_split=0.2)
 test_image_generator = ImageDataGenerator(rescale=1./255)
 
 train_data_gen = train_image_generator.flow_from_directory(
@@ -56,30 +67,34 @@ train_data_gen = train_image_generator.flow_from_directory(
     directory=train_dir,
     shuffle=True,
     target_size=(IMG_HEIGHT, IMG_WIDTH),
-    class_mode='binary')
-    # subset='training')
+    class_mode='binary',
+    subset='training')
 
-print(train_data_gen.class_indices)
+val_data_gen = train_image_generator.flow_from_directory(
+    batch_size=batch_size,
+    directory=train_dir,
+    shuffle=True,
+    target_size=(IMG_HEIGHT, IMG_WIDTH),
+    class_mode='binary',
+    subset='validation')
 
-val_data_gen = test_image_generator.flow_from_directory(
+test_data_gen = test_image_generator.flow_from_directory(
     batch_size=batch_size,
     directory=test_dir,
     shuffle=True,
     target_size=(IMG_HEIGHT, IMG_WIDTH),
     class_mode='binary')
-    # subset='validation')
-
-print(val_data_gen.class_indices)
 
 model = Sequential([
-    Conv2D(32, 3, padding='same', activation='relu', input_shape=(IMG_HEIGHT, IMG_WIDTH ,3)),
+    Conv2D(32, 3, padding='same', activation='relu',
+           input_shape=(IMG_HEIGHT, IMG_WIDTH, 3)),
     MaxPooling2D(),
     Conv2D(64, 3, padding='same', activation='relu'),
     MaxPooling2D(),
     Dropout(0.2),
     Flatten(),
     Dense(1024, activation='relu'),
-    Dense(12, activation='softmax')
+    Dense(13, activation='softmax')
 ])
 
 model.compile(optimizer='adam',
@@ -88,23 +103,24 @@ model.compile(optimizer='adam',
 
 model.summary()
 
-checkpoint_path = "training_1/cp.ckpt"
+checkpoint_path = os.path.join(
+    pwd, "checkpoints", 'weights.{epoch:02d}-{val_loss:.2f}.h5')
 checkpoint_dir = os.path.dirname(checkpoint_path)
 
 cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
-                                                 save_weights_only=True,
+                                                 save_weights_only=False,
                                                  verbose=1)
 
-
 history = model.fit_generator(train_data_gen,
-    steps_per_epoch=total_train_size // batch_size,
-    epochs=epochs,
-    validation_data=val_data_gen,
-    validation_steps=total_test_size // batch_size,
-    callbacks=[cp_callback]
-)
+                              steps_per_epoch=total_train_size // batch_size,
+                              epochs=epochs,
+                              validation_data=val_data_gen,
+                              validation_steps=total_test_size // batch_size,
+                              use_multiprocessing=True,
+                              callbacks=[cp_callback]
+                              )
 
-model.save('256b_15e.h5')
+model.save(os.path.join(pwd, '13d_256b_15e.h5'))
 
 acc = history.history['accuracy']
 val_acc = history.history['val_accuracy']
@@ -112,6 +128,8 @@ val_acc = history.history['val_accuracy']
 loss = history.history['loss']
 val_loss = history.history['val_loss']
 
+unseen_loss, unseen_acc = model.evaluate_generator(test_data_gen)
+print(f'New data - loss: {unseen_loss}, accuracy: {unseen_acc}')
 epochs_range = range(epochs)
 
 plt.figure(figsize=(8, 8))
@@ -127,16 +145,3 @@ plt.plot(epochs_range, val_loss, label='Validation Loss')
 plt.legend(loc='upper right')
 plt.title('Training and Validation Loss')
 plt.show()
-
-
-# def show_batch(image_batch, label_batch):
-#   plt.figure(figsize=(10,10))
-#   for n in range(25):
-#       ax = plt.subplot(5,5,n+1)
-#       plt.imshow(image_batch[n])
-#       plt.title(CLASS_NAMES[int(label_batch[n])])
-#       plt.axis('off')
-
-# image_batch, label_batch = next(train_data_gen)
-# show_batch(image_batch, label_batch)
-# plt.show()

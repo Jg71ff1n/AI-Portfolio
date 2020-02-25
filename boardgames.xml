@@ -104,6 +104,22 @@
 <category><pattern> I WANT A GAME ABOUT * </pattern>
   <template>^x$<star index="1"/></template></category>
 
+<!-- Game state analysis via image classification -->
+<category>
+  <pattern>WHAT IS THE CURRENT STATE OF *</pattern>
+  <template>^ip$<star index="1"/></template>  
+</category>
+
+<!-- Chess game helper queries -->
+<category><pattern> WHAT IS THE CURRENT GAME BOARD </pattern>
+  <template>^ib$</template></category>
+
+<category><pattern> WHAT IS CURRENT THE GAME STATE </pattern>
+  <template>^in$</template></category>
+
+<category><pattern> MOVE * TO * </pattern>
+  <template>^im$<star index="1"/>#<star index="2"/></template></category>
+
 <!-- Default reaction -->
 <category><pattern> * </pattern>
   <template>Sorry I did not understand "<star index="1"/>". Please ask again.</template></category>

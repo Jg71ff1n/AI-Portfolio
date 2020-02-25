@@ -111,3 +111,12 @@ venv.bak/
 /exports
 database.csv
 /ImageDataset/*
+/ImageClassification/ImageDataset/*
+/ImageClassification/checkpoints/*
+/ImageClassification/piecesDatasetAll/*
+/ImageClassification/squares/*
+/ImageClassification/test_boards/*
+*.h5
+*.jpg
+*.jpeg
+*.png
