@@ -116,6 +116,7 @@ database.csv
 /ImageClassification/piecesDatasetAll/*
 /ImageClassification/squares/*
 /ImageClassification/test_boards/*
+/reinforcement-learning/muzero-general/*
 *.h5
 *.jpg
 *.jpeg
