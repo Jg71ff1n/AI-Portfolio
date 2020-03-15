@@ -107,36 +107,3 @@ def create_masks(inp, tar):
     combined_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
 
     return enc_padding_mask, combined_mask, dec_padding_mask
-
-# The @tf.function trace-compiles train_step into a TF graph for faster
-# execution. The function specializes to the precise shape of the argument
-# tensors. To avoid re-tracing due to the variable sequence lengths or variable
-# batch sizes (the last batch is smaller), use input_signature to specify
-# more generic shapes.
-train_step_signature = [
-    tf.TensorSpec(shape=(None, None), dtype=tf.int64),
-    tf.TensorSpec(shape=(None, None), dtype=tf.int64),
-]
-
-
-@tf.function(input_signature=train_step_signature)
-def train_step(inp, tar):
-    tar_inp = tar[:, :-1]
-    tar_real = tar[:, 1:]
-
-    enc_padding_mask, combined_mask, dec_padding_mask = create_masks(
-        inp, tar_inp)
-
-    with tf.GradientTape() as tape:
-        predictions, _ = transformer(inp, tar_inp,
-                                     True,
-                                     enc_padding_mask,
-                                     combined_mask,
-                                     dec_padding_mask)
-        loss = loss_function(tar_real, predictions)
-
-    gradients = tape.gradient(loss, transformer.trainable_variables)
-    optimizer.apply_gradients(zip(gradients, transformer.trainable_variables))
-
-    train_loss(loss)
-    train_accuracy(tar_real, predictions)

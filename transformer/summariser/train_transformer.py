@@ -17,6 +17,7 @@ if gpus:
         # Currently, memory growth needs to be the same across GPUs
         for gpu in gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
+        # tf.config.experimental.set_visible_devices([], 'GPU')
         logical_gpus = tf.config.experimental.list_logical_devices('GPU')
         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
     except RuntimeError as e:
@@ -25,13 +26,19 @@ if gpus:
 print("Num GPUs Available: ", len(
     tf.config.experimental.list_physical_devices('GPU')))
 
-BUFFER_SIZE = 20000
+BUFFER_SIZE = 10000
 BATCH_SIZE = 64
 
 train_val_split = ['train[:85%]', 'train[85%:]']
 
 reddit_train, reddit_validation = tfds.load(
     name='reddit_tifu/long', split=train_val_split, as_supervised=True)
+
+# reddit_train = tfds.load(
+#     name='gigaword', split='train', as_supervised=True)
+
+# reddit_validation = tfds.load(
+#     name='gigaword', split='validation', as_supervised=True)
 
 tokeniser_post = tfds.features.text.SubwordTextEncoder.build_from_corpus(
     (post.numpy() for post, tldr in reddit_train), target_vocab_size=2**13)
@@ -63,30 +70,26 @@ def tf_encode(posts, tldrs):
     results_tldrs.set_shape([None])
     return results_posts, results_tldrs
 
+MAX_LENGTH = 80
+
+def filter_max_length(x, y, max_length=MAX_LENGTH):
+  return tf.logical_and(tf.size(x) <= max_length,
+                        tf.size(y) <= max_length)
+
 
 train_dataset = reddit_train.map(tf_encode)
-train_dataset = train_dataset.cache()
+train_dataset = train_dataset.filter(filter_max_length)
 train_dataset = train_dataset.shuffle(
     BUFFER_SIZE).padded_batch(BATCH_SIZE, ([None], [None]))
 train_dataset = train_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
-train_dataset.as_numpy_iterator()
-
 val_dataset = reddit_validation.map(tf_encode)
-val_dataset = val_dataset.cache()
-val_dataset = val_dataset.prefetch(tf.data.experimental.AUTOTUNE)
-
-val_dataset.as_numpy_iterator()
-
-pt_batch, en_batch = next(iter(val_dataset))
-print(pt_batch)
-print(en_batch)
 
 
-num_layers = 4
-d_model = 128
-dff = 512
-num_heads = 8
+num_layers = 2
+d_model = 32
+dff = 128
+num_heads = 2
 
 input_vocab_size = tokeniser_post.vocab_size + 2
 target_vocab_size = tokenizer_tldr.vocab_size + 2
@@ -135,27 +138,63 @@ if ckpt_manager.latest_checkpoint:
 
 EPOCHS = 20
 
-for epoch in range(EPOCHS):
-  start = time.time()
-  
-  train_loss.reset_states()
-  train_accuracy.reset_states()
-  
-  # inp -> post, tar -> tldr
-  for (batch, (inp, tar)) in enumerate(train_dataset):
-    train_step(inp, tar)
-    
-    if batch % 50 == 0:
-      print ('Epoch {} Batch {} Loss {:.4f} Accuracy {:.4f}'.format(
-          epoch + 1, batch, train_loss.result(), train_accuracy.result()))
-      
-  if (epoch + 1) % 5 == 0:
-    ckpt_save_path = ckpt_manager.save()
-    print ('Saving checkpoint for epoch {} at {}'.format(epoch+1,
-                                                         ckpt_save_path))
-    
-  print ('Epoch {} Loss {:.4f} Accuracy {:.4f}'.format(epoch + 1, 
-                                                train_loss.result(), 
-                                                train_accuracy.result()))
+# The @tf.function trace-compiles train_step into a TF graph for faster
+# execution. The function specializes to the precise shape of the argument
+# tensors. To avoid re-tracing due to the variable sequence lengths or variable
+# batch sizes (the last batch is smaller), use input_signature to specify
+# more generic shapes.
+train_step_signature = [
+    tf.TensorSpec(shape=(None, None), dtype=tf.int64),
+    tf.TensorSpec(shape=(None, None), dtype=tf.int64),
+]
 
-  print ('Time taken for 1 epoch: {} secs\n'.format(time.time() - start))
+
+@tf.function(input_signature=train_step_signature)
+def train_step(inp, tar):
+    tar_inp = tar[:, :-1]
+    tar_real = tar[:, 1:]
+
+    enc_padding_mask, combined_mask, dec_padding_mask = create_masks(
+        inp, tar_inp)
+
+    with tf.GradientTape() as tape:
+        predictions, _ = transformer(inp, tar_inp,
+                                     True,
+                                     enc_padding_mask,
+                                     combined_mask,
+                                     dec_padding_mask)
+        loss = loss_function(tar_real, predictions)
+
+    gradients = tape.gradient(loss, transformer.trainable_variables)
+    optimizer.apply_gradients(zip(gradients, transformer.trainable_variables))
+
+    train_loss(loss)
+    train_accuracy(tar_real, predictions)
+
+
+for epoch in range(EPOCHS):
+    start = time.time()
+
+    train_loss.reset_states()
+    train_accuracy.reset_states()
+
+    # inp -> post, tar -> tldr
+    for (batch, (inp, tar)) in enumerate(train_dataset):
+        train_step(inp, tar)
+        print('Epoch {} Batch {}'.format(epoch + 1, batch))
+        if batch % 50 == 0:
+            print('Epoch {} Batch {} Loss {:.4f} Accuracy {:.4f}'.format(
+                epoch + 1, batch, train_loss.result(), train_accuracy.result()))
+
+    if (epoch + 1) % 5 == 0:
+        ckpt_save_path = ckpt_manager.save()
+        print('Saving checkpoint for epoch {} at {}'.format(epoch+1,
+                                                            ckpt_save_path))
+
+    print('Epoch {} Loss {:.4f} Accuracy {:.4f}'.format(epoch + 1,
+                                                        train_loss.result(),
+                                                train_loss.result(), 
+                                                        train_loss.result(),
+                                                        train_accuracy.result()))
+
+    print('Time taken for 1 epoch: {} secs\n'.format(time.time() - start))
