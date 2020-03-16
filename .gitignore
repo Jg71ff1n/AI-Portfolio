@@ -117,6 +117,9 @@ database.csv
 /ImageClassification/squares/*
 /ImageClassification/test_boards/*
 /reinforcement-learning/muzero-general/*
+/transformer/*/checkpoints/*
+/transformer/*/final_weights/*
+/transformer/*/checkpoints_old/*
 *.h5
 *.jpg
 *.jpeg
